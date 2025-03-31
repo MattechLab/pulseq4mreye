@@ -147,8 +147,8 @@ disp(size(thetas));
 clear seq;
 seq=mr.Sequence(sys);           % Create a new sequence object
 
-for i=1:size(thetas, 1)
-% for i = 1:2
+% for i=1:size(thetas, 1)
+for i = 200:210
     for c=1:length(TE)
         % in our case length(TE)=1, since it is a single echo sequence
         scalers = GradScalers(thetas(i,1), thetas(i,2));

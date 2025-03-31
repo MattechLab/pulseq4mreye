@@ -41,7 +41,7 @@ seq=mr.Sequence(sys);           % Create a new sequence object
 
 %% Define the parameters
 
-
+% 1/bw: 
 MatrixSize = 480; %
 N = 480; 
 adc_dur = 480*4;
@@ -129,7 +129,7 @@ phase_accum1 = 1e-6*(0:1:1099)*df*2*pi;
 b1 = (ones(1,1100));
 b1 = b1.*exp(1i*phase_accum1);
 
-phase_accum2 = 1e-6*(0:1:1099)*df*2*pi+2*pi*df*1099*1e-6;
+phase_accum2 = 1e-6*(0:1:1099)*df*2*pi+2*pi*df*1100*1e-6;
 b2 = (ones(1,1100));
 b2 = b2.*exp(1i*phase_accum2);
 
@@ -144,6 +144,13 @@ rf1_delay = mr.makeDelay(rf1.deadTime);
 if add_rfdelay
     rf2_delay = mr.makeDelay(rf2.deadTime*rfdelay_ratio);
 end
+%%
+figure;
+plot(phase_accum2)
+hold on;
+plot(phase_accum1);
+grid on;
+
 
 %% Set the timing
 TR=8.01e-3;
@@ -209,6 +216,7 @@ end
 flagSelfNav = 1;
 nSeg = 22;
 nShot = 2055;
+
 nShot_plot = 2;
 traj_design = 0;    % Trajectory design: 0 = original, 1 = pole-to-pole, 2 = continuous
 
@@ -234,7 +242,8 @@ seq=mr.Sequence(sys);           % Create a new sequence object
 %
 
 % for indRadial = 1:nLine
-for indRadial = 1:10
+nRadial = nLine;
+for indRadial = 1:nRadial
         polar  = polarAngle(indRadial);
         azimut = azimuthalAngle(indRadial);
         [gx1,gy1,gz1] = RotateGzWrtZaxis_V02(polar,azimut,gz_1,sys);
@@ -316,7 +325,7 @@ plot_shot = false;
 plot_samples = true;
 make_gif = false;
 k_trj = kspace_traj;
-k_trj = reshape(k_trj, [3, 480, 22, 50]);
+k_trj = reshape(k_trj, [3, 480, 22, round(nRadial/22)]);
 %%
 if plot_shot
     %plot k-spaces
@@ -324,7 +333,7 @@ if plot_shot
     % plot(kspace_traj(2,:), kspace_traj(3,:), "o")
     figure ('Color', 'White')
     % for f = 1:size(thetas,1)
-    for iShot = 1:10
+    for iShot = 1:nRadial
         % for iSeg = 1:nSeg
            
             kkx = squeeze(k_trj(1,1,:, iShot));
