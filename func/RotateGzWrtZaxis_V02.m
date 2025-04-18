@@ -2,13 +2,17 @@ function [gx,gy,gz] = RotateGzWrtZaxis_V02(polar,azimut,gz_1,sys)
 % Author: Nils
 % rotate the input gradient around x by polar and z axis by azimuth angle
 
-    % Rotate gz_1 Around the X-Axis
-    gz_rot_polar = mr.rotate('x',polar,gz_1);
+    % Rotate gz_1 Around the X-Axis 
+    % --> after checking with Mauro, it should be Y-Axis
+    
+    gz_rot_polar = mr.rotate('y',polar,gz_1);
     
     % % Rotate the Resulting Gradients Around the Z-Axis
    
     array = {};
     count = 1; 
+
+
     for k = 1:size(gz_rot_polar,2)
         gz_rot_azi = mr.rotate('z',azimut,gz_rot_polar{k});
         for p = 1:size(gz_rot_azi,2)

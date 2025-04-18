@@ -5,16 +5,38 @@
 % CHUV Prisma
 % LIBRE GRE RADIAL PHYLLOTAXIS
 
-clear; rmpath(genpath('/Users/cag/Documents/forclone/pulseq'));rmpath(genpath('/Users/cag/Documents/forclone/pulseq_v15'));
+rmpath(genpath('/Users/cag/Documents/forclone/pulseq'));rmpath(genpath('/Users/cag/Documents/forclone/pulseq_v15'));
 %%
-clc;close all;
+clc;close all;clear;
 addpath(genpath('/Users/cag/Documents/forclone/pulseq'))
 addpath(genpath('/Users/cag/Documents/forclone/pulseq4mreye/func'))
 %% mode control
+subject_num_array = [8];
+for subject_num = subject_num_array
 grad_mode = 'Fast';
 checking = 0;
-subject_num = 5;
-rf_spoiling_increment = 117; 
+if subject_num ==1
+    % libre_wosp
+    rf_spoiling_increment = 0; 
+    adc_offset = 0;
+elseif subject_num ==3
+    % libre_rfsp_qua50_adc_ph
+     rf_spoiling_increment = 50; 
+    adc_offset = pi/2;
+elseif subject_num ==5
+    %  libre_rfsp_qua117_adc_ph
+     rf_spoiling_increment = 117; 
+    adc_offset = pi/2;
+elseif subject_num ==7
+    % libre_rfsp_qua50_adc_0
+     rf_spoiling_increment = 50; 
+    adc_offset = 0;
+elseif subject_num ==8
+    % libre_rfsp_qua117_adc_0
+     rf_spoiling_increment = 117; 
+    adc_offset = 0;
+end
+
 seq_mode = 2; %1: pre 2: main 3: debug
 add_rfdelay = true;
 rfdelay_ratio = 1;
@@ -24,19 +46,22 @@ use_rfspoiler = 1;
 
 %%%%
 seq_mode_list = {'pre', 'main', 'debug'};
-seq_note = strcat('sub',num2str(subject_num),'_',seq_mode_list{seq_mode},'_libre_rfsp_qua',num2str(rf_spoiling_increment), '_adc_ph');
+seq_note = strcat('sub',num2str(subject_num),'_',seq_mode_list{seq_mode},'_libre_rfsp_qua', num2str(rf_spoiling_increment), '_adc_ph');
 disp(['Preparing: ', seq_note])
 %%
 flagSelfNav = 1;
 nSeg = 22;
-nShot = 2055;
+
 nShot_plot = 2;
-nLine = nSeg*nShot;
-nLine_prescan = nSeg*419;
+
 if seq_mode == 1
-    iLine = nLine_prescan;
+    nShot = 419;
+    nLine = nSeg*nShot;
+    iLine = nLine;
     disp('--------------Prescan mode----------------')
 elseif seq_mode == 2
+    nShot = 2055;
+    nLine = nSeg*nShot;
     iLine = nLine;
     disp('--------------Main sequence mode----------------')
 else
@@ -144,7 +169,7 @@ if use_rfspoiler
          % Compute RF spoiling phase (convert degrees to radians)
         rf_spoiling_phase = indLine*(indLine - 1)*(rf_spoiling_increment/2);
         rf_spoiling_phase_rad = rf_spoiling_phase * pi / 180;
-        adc_phaseOffset{indLine} = rf_spoiling_phase_rad + pi/2;
+        adc_phaseOffset{indLine} = rf_spoiling_phase_rad + adc_offset;
         
         % b1 b2
         phase_accum1 = 1e-6*(0:1:tao-1)*df*2*pi+rf_spoiling_phase_rad;
@@ -339,7 +364,7 @@ else
     fprintf([error_report{:}]);
     fprintf('\n');
 end
-%% plot
+% plot
 plot_seq = true;
 if plot_seq
     seq.plot('timeRange', [5 10]*TR);
@@ -350,7 +375,7 @@ disp((seq.duration))
 
 
 
-%% Compile the sequence
+% Compile the sequence
 if do_compile
     seq.setDefinition('FOV', fov);
     seq.setDefinition('Name', 'GRE');
@@ -452,4 +477,4 @@ if make_gif
     end
 end
 
-
+end

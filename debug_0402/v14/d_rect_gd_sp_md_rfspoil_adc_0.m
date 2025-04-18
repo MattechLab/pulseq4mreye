@@ -3,39 +3,63 @@
 % adapted by Yiwei Jia
 % LIBRE GRE RADIAL PHYLLOTAXIS
 
-clear;clc;close all;
+rmpath(genpath('/Users/cag/Documents/forclone/pulseq'));rmpath(genpath('/Users/cag/Documents/forclone/pulseq_v15'));
+%%
+clc;close all;clear;
 addpath(genpath('/Users/cag/Documents/forclone/pulseq'))
+addpath(genpath('/Users/cag/Documents/forclone/pulseq4mreye/func'))
+
 %% mode control
+subject_num_array = [4];
+for subject_num = subject_num_array
 grad_mode = 'Fast';
 checking = 0;
-subject_num = 2;
-rf_spoiling_increment = 0; 
-seq_mode = 2; %1: pre 2: main 3: debug
+if subject_num ==2
+    % rect_wosp
+    rf_spoiling_increment = 0; 
+    adc_offset = 0;
+elseif subject_num ==4
+    % rect_rfsp_qua50_adc_ph
+     rf_spoiling_increment = 50; 
+    adc_offset = 0;
+elseif subject_num ==6
+    %  rect_rfsp_qua117_adc_ph
+     rf_spoiling_increment = 117; 
+    adc_offset = 0;
+
+end
+
+seq_mode = 3; %1: pre 2: main 3: debug
 add_rfdelay = true;
 rfdelay_ratio = 1;
 do_compile = 1;
-seqfolder = "/Users/cag/Documents/forclone/pulseq4mreye/debug_0402/seqs_v14/";
+seqfolder = "/Users/cag/Documents/forclone/pulseq4mreye/debug_0407/seqs_v14/";
 use_rfspoiler = 1;
 
 %%%%
 seq_mode_list = {'pre', 'main', 'debug'};
-seq_note = strcat('sub',num2str(subject_num),'_',seq_mode_list{seq_mode},'_rect_rfsp_qua',num2str(rf_spoiling_increment), '_adc_ph');
+seq_note = strcat('sub',num2str(subject_num),'_',seq_mode_list{seq_mode},'_rect_rfsp_qua',num2str(rf_spoiling_increment), '_adc_0');
 disp(['Preparing: ', seq_note])
 %%
 flagSelfNav = 1;
 nSeg = 22;
-nShot = 2055;
+
 nShot_plot = 2;
-nLine = nSeg*nShot;
-nLine_prescan = nSeg*419;
+
 if seq_mode == 1
-    iLine = nLine_prescan;
+    nShot = 419;
+    nLine = nSeg*nShot;
+    iLine = nLine;
     disp('--------------Prescan mode----------------')
 elseif seq_mode == 2
+    nShot = 2055;
+    nLine = nSeg*nShot;
     iLine = nLine;
     disp('--------------Main sequence mode----------------')
 else
-    iLine = 22*5;
+    nShot = 1000;
+    nLine = nSeg*nShot;
+    iLine = nLine;
      disp('--------------Debug sequence mode----------------')
 end
 
@@ -135,12 +159,14 @@ if use_rfspoiler
 
     for indLine = 1:iLine
         rf_spoiling_phase = mod(rf_spoiling_increment/2*(indLine-1)*indLine, 360);
-        disp(['indLine/ total Lines: ',num2str(indLine), '/', num2str(iLine), ' RF phase: ', num2str(rf_spoiling_phase)]);
+     
         % Compute RF spoiling phase (convert degrees to radians)
         rf_spoiling_phase_rad = rf_spoiling_phase * pi / 180;
-        adc_phaseOffset{indLine} = rf_spoiling_phase_rad;
-        disp([ ' adc phase: ', num2str(adc_phaseOffset{indLine} )]);
-        
+        adc_phaseOffset{indLine} = rf_spoiling_phase_rad + adc_offset;
+        if mod(indLine, 500)==0
+            disp(['indLine/ total Lines: ',num2str(indLine), '/', num2str(iLine), ' RF phase: ', num2str(rf_spoiling_phase)]);
+            disp([ ' adc phase: ', num2str(adc_phaseOffset{indLine} )]);
+        end
         rf_dur = 300;
         rf = mr.makeBlockPulse(alpha*pi/180,sys,'Duration',rf_dur*1e-6);
        
@@ -286,9 +312,10 @@ for indLine = 1:iLine
         seq.addBlock(gx2,gy2,gz2);
        
         seq.addBlock(mr.makeDelay(delay_tr));
-
+        if mod(indLine, 500)==0
         str = append('Steady state kspace sampling module kSpace=(',num2str(indLine),'/',num2str(iLine),') generated');
         disp(str);
+        end
         TR_kernel = seq.duration();
 
 end
@@ -342,10 +369,13 @@ end
 %% Plotting and checking the trajectory
 
 plot_shot = false;
-plot_samples = true;
+plot_samples = false;
 make_gif = false;
+check_traj = 0;
+if check_traj
 k_trj = kspace_traj;
 k_trj = reshape(k_trj, [3, 480, 22, round(iLine/22)]);
+end
 %%
 if plot_shot
     %plot k-spaces
@@ -417,4 +447,5 @@ if make_gif
     end
 end
 
-
+clear;
+end
