@@ -32,7 +32,7 @@ seq.read(strcat('/Users/cag/Documents/forclone/pulseq4mreye/mreye2p0/', ...
 TR = 8.01e-3;
  seq.plot('timeRange', [0 3]*TR);
 %%
-dur = seq.duration()
+dur = seq.duration();
 %% Display the block's details
 disp(block_262);
 % Check the RF pulse properties in block 262 (if any)
