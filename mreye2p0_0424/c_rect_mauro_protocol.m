@@ -8,11 +8,11 @@
 % BW: 906Hz/px
 % https://github.com/QIS-MRI/Pulseq/blob/main/write_pulseq_PhaseCycledbSSFP
 
-rmpath(genpath('/Users/cag/Documents/forclone/pulseq'));rmpath(genpath('/Users/cag/Documents/forclone/pulseq_v15'));
+rmpath(genpath('/Users/mauroleidi/Desktop/MattechGit/pulseSeqYiwei/pulseq'));rmpath(genpath('/Users/mauroleidi/Desktop/MattechGit/pulseSeqYiwei/pulseq'));
 %%
-clc;close all;clear;addpath(genpath('/Users/cag/Documents/forclone/pulseq_v15'))
-addpath(genpath('/Users/cag/Documents/forclone/pulseq4mreye/func'))
-
+clc;close all;clear;addpath(genpath('/Users/mauroleidi/Desktop/MattechGit/pulseSeqYiwei/pulseq'))
+addpath(genpath('/Users/mauroleidi/Desktop/MattechGit/pulseSeqYiwei/pulseq4mreye/func'))
+addpath(genpath('/Users/mauroleidi/Desktop/MattechGit/pulseSeqYiwei/pulseq/matlab'))
 %% mode control
 subject_num_array = 4;
 subject_num = subject_num_array;
@@ -35,11 +35,11 @@ elseif subject_num ==4
 end
 
 
-seq_mode = 3; %1: pre 2: main 3: debug
+seq_mode = 2; %1: pre 2: main 3: debug
 add_rfdelay = true;
 rfdelay_ratio = 1;
-do_compile = 0;
-seqfolder = "/Users/cag/Documents/forclone/pulseq4mreye/mreye2p0_0430/";
+do_compile = 1;
+seqfolder = "/Users/mauroleidi/Desktop/MattechGit/pulseSeqYiwei/pulseq4mreye/mreye2p0_0430/";
 use_rfspoiler = 1;
 
 %%%%
@@ -68,11 +68,33 @@ else
      disp('--------------Debug sequence mode----------------')
 end
 
-MatrixSize = 240*2; %
-N = 240*2; 
-% 1/bw: 
+%MatrixSize = 240*2; 
+% The FoV is a parameter that depends on the size of the imaged region, to
+% avoid the distruption of the image by artifacts we often double the FoV.
+% So the AcquisionFoV = 2* ROIFoV
+% Then it follows delta_k = 1/AcquisionFoV
+% Finally we have to decide the value of N points per readouts, sometimes
+% called matrix size in Siemens implementations.
+% N sets the maximum sampled frequency in the k space = delta_k*N/2 =
+% = N/(2*AcquisionFoV) This value is also known as Receiver bandwidth of the
+% acquisition, and if too low can cause gibbs ringing artifacts
+
+% Single FoV = 160 mm => AcquisionFoV = 320 mm
+fov= [320*1e-3 320*1e-3 320*1e-3];     % Define FOV, isotropic, unit[m]
+deltak=1 ./ fov;
+
+% Points per line = To understand what is the correct number here
+N = 240*2;
+Nx      = N; %1e3*fov(1)/(res(2)); 
+Ny      = N; %1e3*fov(2)/(res(2)); 
+Nz      = N; %1e3*fov(3)/res(3);  
 bw_px = 906; %Hz/px
-res = [2 2 2];                        % Define resolution, voxel size (mm)
+
+%if checking
+%    disp(['fov: ', num2str(fov)])
+%end
+% 1/bw: 
+%res = [2 2 2];                         Define resolution, voxel size (mm)
 
 %
 switch grad_mode
@@ -90,8 +112,6 @@ switch grad_mode
         max_slew = 188;  % Maximum slew rate [mT/m/ms]
 end
 
-
-
 sys = mr.opts('MaxGrad',max_grad,'GradUnit','mT/m',...
     'MaxSlew',max_slew,'SlewUnit','T/m/s',...
     'rfRingdownTime', 20e-6, 'rfDeadTime', 100e-6, ...
@@ -101,26 +121,21 @@ seq=mr.Sequence(sys);           % Create a new sequence object
 
 %% Define the parameters
 
-adc_dur = 1e6/bw_px;
-adc_dwell = round(adc_dur/N/(sys.rfRasterTime*1e6))*(sys.rfRasterTime*1e6);
-adc_dur = adc_dwell*N;
+adc_dur = 1e6/bw_px; % Here adc duration seems fixed by the bandwidth, however it means that the bandwidth is per readout not per k_space sample
+adc_dwell = round(adc_dur/N/(sys.rfRasterTime*1e6))*(sys.rfRasterTime*1e6); % Here the dwell time is basically the closest approximation of adc_dur/N, but a multiple of the rfRasterTime
+adc_dur = adc_dwell*N; % Here we recompute the adc_duration but this time is a multiple of the rfRasterTime
 
+%% WE SHOULD MAYBE TRY TO UNDERSTAND THE BANDWIDTH A BIT BETTER. Especially since I changed N, 
+% and it impacts the adc_dwell I would like to understand what is the
+% practical effect of that on the sequence, and if I should adapt other
+% parameters accordingly
+% Probably the sequence parameter should be the single sample bandwith,
+% instead of the full readout bandwith? 
 
-fov=[MatrixSize*res(1)*1e-3 MatrixSize*res(2)*1e-3 MatrixSize*res(3)*1e-3];     % Define FOV, isotropic, unit[m]
-if checking
-disp(['fov: ', num2str(fov)])
-end
-
-deltak=1 ./ fov;
-
-
-Nx      = 1e3*fov(1)/(res(2)); 
-Ny      = 1e3*fov(2)/(res(2)); 
-Nz      = 1e3*fov(3)/res(3);  
 
 
 %% new gradient from Nils
-roDuration= ceil((adc_dur*1e-6)/seq.gradRasterTime)*seq.gradRasterTime;
+roDuration = ceil((adc_dur*1e-6)/seq.gradRasterTime)*seq.gradRasterTime;
 gz               = mr.makeTrapezoid('z','FlatArea',(Nx-1)*deltak(1),'FlatTime',roDuration,'system',sys);
 adc  = mr.makeAdc(Nx,'Duration',gz.flatTime,'Delay',gz.riseTime, 'system',sys);
 
@@ -191,7 +206,7 @@ end
 %% Set the timing
 TR=3.9e-3;
 TE = 1.79e-3;
-% 
+% The Ernst angle
 % TE_kernel
 if add_rfdelay
     te_kernel = (mr.calcDuration(rf)-rf.delay)/2  + mr.calcDuration(rf_delay) + mr.calcDuration(gzPre) + gz.riseTime+gz.flatTime/2;
@@ -332,6 +347,8 @@ disp((seq.duration))
 
 %% Compile the sequence
 if do_compile
+    % Additionaldefinitions
+    
     seq.setDefinition('FOV', fov);
     seq.setDefinition('Name', 'GRE');
     
@@ -356,6 +373,12 @@ end
 % k-space trajectory calculation
 kspace_traj = seq.calculateKspacePP;
 %% Plotting and checking the trajectory
+matpath = fullfile(seqfolder, strcat(seq_name,'.mat') );
+save('matpath', 'kspace_traj');
+disp('The trajectory is written here:')
+disp(matpath);
+
+
 
 plot_shot = 1;
 plot_samples = false;
